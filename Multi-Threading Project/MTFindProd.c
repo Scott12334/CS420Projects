@@ -71,11 +71,13 @@ int main(int argc, char *argv[]){
 	GenerateInput(arraySize, indexForZero);
 
 	CalculateIndices(arraySize, gThreadCount, indices);
+	/* 
+	Code to check that Calculate indices work
 	for(int i =0; i < gThreadCount; i++){
 		printf("Division %d: Start %d, End %d\n",indices[i][0],indices[i][1],indices[i][2]);
 	}
+	*/
 
-	return 0;
 	// Code for the sequential part
 	SetTime();
 	prod = SqFindProd(arraySize);
@@ -128,7 +130,12 @@ int main(int argc, char *argv[]){
 // Write a regular sequential function to multiply all the elements in gData mod NUM_LIMIT
 // REMEMBER TO MOD BY NUM_LIMIT AFTER EACH MULTIPLICATION TO PREVENT YOUR PRODUCT VARIABLE FROM OVERFLOWING
 int SqFindProd(int size) {
-
+	int product = 1;
+	for(int i = 0; i < size; i++){
+		product *= gData[i];
+		product = product % NUM_LIMIT;
+	}
+	return product;
 }
 
 // Write a thread function that computes the product of all the elements in one division of the array mod NUM_LIMIT
