@@ -1,9 +1,9 @@
 /*
 CS 420 
 Assignment 2: Multithreading and Synchronization
-Group # <- just your group number in this line
-Section # <- just your section number
-OSs Tested on: Linux, Ubuntu, Mac, etc., along with your system's CPU specifications
+Group 19 <- just your group number in this line
+Section 2 <- just your section number
+OSs Tested on: Kali Linux - AMD64
 */
 
 #include <stdio.h>
@@ -37,7 +37,7 @@ void *ThFindProd(void *param); //Thread FindProduct but without semaphores
 void *ThFindProdWithSemaphore(void *param); //Thread FindProduct with semaphores
 int ComputeTotalProduct(); // Multiply the division products to compute the total modular product 
 void InitSharedVars();
-void GenerateInput(int size); //Generate the input array
+void GenerateInput(int size, int indexForZero); //Generate the input array
 void CalculateIndices(int arraySize, int thrdCnt, int indices[MAX_THREADS][3]); //Calculate the indices to divide the array into T divisions, one division per thread
 int GetRand(int min, int max);//Get a random number between min and max
 
@@ -68,10 +68,14 @@ int main(int argc, char *argv[]){
 		exit(-1);
 	}
 
-	GenerateInput(arraySize);
+	GenerateInput(arraySize, indexForZero);
 
 	CalculateIndices(arraySize, gThreadCount, indices);
+	for(int i =0; i < gThreadCount; i++){
+		printf("Division %d: Start %d, End %d\n",indices[i][0],indices[i][1],indices[i][2]);
+	}
 
+	return 0;
 	// Code for the sequential part
 	SetTime();
 	prod = SqFindProd(arraySize);
@@ -170,15 +174,30 @@ void InitSharedVars() {
 
 // Write a function that fills the gData array with random numbers between 1 and MAX_RANDOM_NUMBER
 // If indexForZero is valid and non-negative, set the value at that index to zero
-void GenerateInput(int size) {
-
+void GenerateInput(int size, int indexForZero) {
+	for(int i = 0; i < size; i++){
+		gData[i] = GetRand(1, MAX_RANDOM_NUMBER);
+	}
+	if(indexForZero >= 0 && indexForZero < size){
+		gData[indexForZero] = 0;
+	}
 }
 
 // Write a function that calculates the right indices to divide the array into thrdCnt equal divisions
 // For each division i, indices[i][0] should be set to the division number i,
 // indices[i][1] should be set to the start index, and indices[i][2] should be set to the end index
 void CalculateIndices(int arraySize, int thrdCnt, int indices[MAX_THREADS][3]) {
-
+	//Correctly rounds the division
+	int count = (arraySize + (thrdCnt-1))/thrdCnt;
+	int i = 0;
+	for(i =0; i < thrdCnt-1; i++){
+		indices[i][0] = i;
+		indices[i][1] = 0 + (count*i);
+		indices[i][2] = (count - 1) + (count*i);
+	}
+	indices[i][0] = i;
+	indices[i][1] = 0 + (count*i);
+	indices[i][2] = arraySize - 1;
 }
 
 // Get a random number in the range [x, y]
