@@ -192,11 +192,11 @@ void* ThFindProdWithSemaphore(void *param) {
 
 	sem_wait(&mutex);//mutex protection
 	gDoneThreadCount++;
-	sem_post(&mutex);
 
-	if(threadNum==gThreadCount){//done if last thread
+	if(gDoneThreadCount==gThreadCount){//done if last thread
 		sem_post(&completed);
 	}
+	sem_post(&mutex);
 
 }
 
