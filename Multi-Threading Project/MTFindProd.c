@@ -91,6 +91,12 @@ int main(int argc, char *argv[]){
 	// Initialize threads, create threads, and then let the parent wait for all threads using pthread_join
 	// The thread start function is ThFindProd
 	// Don't forget to properly initialize shared variables
+	for(i = 0;i<gThreadCount;i++){
+		pthread_create(&tid[i], &attr[i], ThFindProd,indices[i]);
+	}
+	for(i = 0;i<gThreadCount;i++){
+		pthread_join(tid[i], NULL);
+	}
 
 
 	prod = ComputeTotalProduct();
@@ -114,6 +120,9 @@ int main(int argc, char *argv[]){
 
 	InitSharedVars();
 	// Initialize your semaphores here
+	sem_init(&mutex, 0, 1);
+	sem_init(&completed, 0, 0);
+
 
 	SetTime();
 
@@ -121,7 +130,10 @@ int main(int argc, char *argv[]){
 	// Initialize threads, create threads, and then make the parent wait on the "completed" semaphore
 	// The thread start function is ThFindProdWithSemaphore
 	// Don't forget to properly initialize shared variables and semaphores using sem_init
-
+	for(i = 0;i<gThreadCount;i++){
+		pthread_create(&tid[i], &attr[i], ThFindProdWithSemaphore,indices[i]);
+	}
+	sem_wait(&completed);
 
 	prod = ComputeTotalProduct();
 	printf("Threaded multiplication with parent waiting on a semaphore completed in %ld ms. Min = %d\n", GetTime(), prod);
@@ -142,8 +154,17 @@ int SqFindProd(int size) {
 // REMEMBER TO MOD BY NUM_LIMIT AFTER EACH MULTIPLICATION TO PREVENT YOUR PRODUCT VARIABLE FROM OVERFLOWING
 // When it is done, this function should store the product in gThreadProd[threadNum] and set gThreadDone[threadNum] to true
 void* ThFindProd(void *param) {
-	int threadNum = ((int*)param)[0];
+	int threadNum = ((int*)param)[0];//load params according to CalculateIndicies
+	int startIndex = ((int*)param)[1];
+	int endIndex = ((int*)param)[2];
+	int prod=1;
 
+	for(int i = startIndex;i<endIndex;i++){
+		prod *= gData[i];
+		prod = prod % NUM_LIMIT;
+	}
+	gThreadProd[threadNum]=prod;
+	gThreadDone[threadNum]=true;
 }
 
 // Write a thread function that computes the product of all the elements in one division of the array mod NUM_LIMIT
@@ -154,6 +175,28 @@ void* ThFindProd(void *param) {
 // post the "completed" semaphore if it is the last thread to be done
 // Don't forget to protect access to gDoneThreadCount with the "mutex" semaphore
 void* ThFindProdWithSemaphore(void *param) {
+	int threadNum = ((int*)param)[0];//load params according to CalculateIndicies
+	int startIndex = ((int*)param)[1];
+	int endIndex = ((int*)param)[2];
+	int *arr = (int*)param;
+	int prod=1;
+
+	for(int i = startIndex;i<endIndex;i++){
+		prod *= gData[i];
+		prod = prod % NUM_LIMIT;
+	}
+	if(prod==0){//done if zero
+		sem_post(&completed);
+	}
+	gThreadProd[threadNum]=prod;
+
+	sem_wait(&mutex);//mutex protection
+	gDoneThreadCount++;
+	sem_post(&mutex);
+
+	if(threadNum==gThreadCount){//done if last thread
+		sem_post(&completed);
+	}
 
 }
 
