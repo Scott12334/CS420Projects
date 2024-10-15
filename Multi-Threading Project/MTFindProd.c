@@ -104,7 +104,7 @@ int main(int argc, char *argv[]){
 	printf("Threaded multiplication with parent waiting for all children completed in %ld ms. Product = %d\n", GetTime(), prod);
 
 	// Multi-threaded with busy waiting (parent continually checking on child threads without using semaphores)
-/*	InitSharedVars();
+	InitSharedVars();
 	SetTime();
 
 	// Write your code here
@@ -118,7 +118,6 @@ int main(int argc, char *argv[]){
 	printf("Threaded multiplication with parent continually checking on children completed in %ld ms. Product = %d\n", GetTime(), prod);
 
 	// Multi-threaded with semaphores
-
 	InitSharedVars();
 	// Initialize your semaphores here
 	sem_init(&mutex, 0, 1);
@@ -132,13 +131,12 @@ int main(int argc, char *argv[]){
 	// The thread start function is ThFindProdWithSemaphore
 	// Don't forget to properly initialize shared variables and semaphores using sem_init
 	for(i = 0;i<gThreadCount;i++){
-		pthread_create(&tid[i], &attr[i], ThFindProdWithSemaphore,indices[i]);
+		pthread_create(&tid[i], NULL, ThFindProdWithSemaphore,indices[i]);
 	}
 	sem_wait(&completed);
 
 	prod = ComputeTotalProduct();
 	printf("Threaded multiplication with parent waiting on a semaphore completed in %ld ms. Min = %d\n", GetTime(), prod);
-	*/
 }
 
 // Write a regular sequential function to multiply all the elements in gData mod NUM_LIMIT
