@@ -56,6 +56,7 @@ int main(int argc, char *argv[]){
 	// Code for parsing and checking command-line arguments
 	if(argc != 3){
 		fprintf(stderr, "Invalid number of arguments!\n");
+		printf("%d",argc);
 		exit(-1);
 	}
 	if((arraySize = atoi(argv[1])) <= 0 || arraySize > MAX_SIZE){
@@ -112,8 +113,18 @@ int main(int argc, char *argv[]){
 	// Initialize threads, create threads, and then make the parent continually check on all child threads
 	// The thread start function is ThFindProd
 	// Don't forget to properly initialize shared variables
-
-
+	for(i = 0;i<gThreadCount;i++){
+		pthread_create(&tid[i], NULL, ThFindProd,indices[i]);
+	}
+	bool done = false;
+	while(!done){
+		done = true;
+		for(int i = 0; i < gThreadCount; i++){
+			if(gThreadDone[i] == false){
+				done = false;
+			}
+		}
+	}
 	prod = ComputeTotalProduct();
 	printf("Threaded multiplication with parent continually checking on children completed in %ld ms. Product = %d\n", GetTime(), prod);
 
