@@ -6,12 +6,20 @@ Section 2 <- just your section number
 OSs Tested on: Kali Linux - AMD64
 */
 
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <sys/timeb.h>
 #include <semaphore.h>
 #include <stdbool.h>
+#include <unistd.h>
+#include <sys/shm.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 
 #define MAX_SIZE 100000000
 #define MAX_THREADS 16
@@ -24,13 +32,18 @@ long gRefTime; //For timing
 int gData[MAX_SIZE]; //The array that will hold the data
 
 int gThreadCount; //Number of threads
-int gDoneThreadCount; //Number of threads that are done at a certain point. Whenever a thread is done, it increments this. Used with the semaphore-based solution
-volatile int gThreadProd[MAX_THREADS]; //The modular product for each array division that a single thread is responsible for
-volatile bool gThreadDone[MAX_THREADS]; //Is this thread done? Used when the parent is continually checking on child threads
 
-// Semaphores
-sem_t completed; //To notify parent that all threads have completed or one of them found a zero
-sem_t mutex; //Binary semaphore to protect the shared variable gDoneThreadCount
+struct sharedBlock{
+
+	int gDoneThreadCount; //Number of threads that are done at a certain point. Whenever a thread is done, it increments this. Used with the semaphore-based solution
+	volatile int gThreadProd[MAX_THREADS]; //The modular product for each array division that a single thread is responsible for
+	volatile bool gThreadDone[MAX_THREADS]; //Is this thread done? Used when the parent is continually checking on child threads
+
+	// Semaphores
+	sem_t completed; //To notify parent that all threads have completed or one of them found a zero
+	sem_t mutex; //Binary semaphore to protect the shared variable gDoneThreadCount
+};
+struct sharedBlock* block;
 
 int SqFindProd(int size); //Sequential FindProduct (no threads) computes the product of all the elements in the array mod NUM_LIMIT
 void *ThFindProd(void *param); //Thread FindProduct but without semaphores
@@ -40,7 +53,7 @@ void InitSharedVars();
 void GenerateInput(int size, int indexForZero); //Generate the input array
 void CalculateIndices(int arraySize, int thrdCnt, int indices[MAX_THREADS][3]); //Calculate the indices to divide the array into T divisions, one division per thread
 int GetRand(int min, int max);//Get a random number between min and max
-
+int InitShm();
 //Timing functions
 long GetMilliSecondTime(struct timeb timeBuf);
 long GetCurrentTime(void);
@@ -48,7 +61,7 @@ void SetTime(void);
 long GetTime(void);
 
 int main(int argc, char *argv[]){
-	pthread_t tid[MAX_THREADS];
+	pid_t pid[MAX_THREADS];
 	pthread_attr_t attr[MAX_THREADS];
 	int indices[MAX_THREADS][3];
 	int i, indexForZero, arraySize, prod;
@@ -67,9 +80,9 @@ int main(int argc, char *argv[]){
 		fprintf(stderr, "Invalid Thread Count\n");
 		exit(-1);
 	}
-
+	InitShm();
+	indexForZero=-1;
 	GenerateInput(arraySize, indexForZero);
-
 	CalculateIndices(arraySize, gThreadCount, indices);
 	/* 
 	Code to check that Calculate indices work
@@ -92,12 +105,27 @@ int main(int argc, char *argv[]){
 	// The thread start function is ThFindProd
 	// Don't forget to properly initialize shared variables
 	for(i = 0;i<gThreadCount;i++){
-		pthread_attr_init(&attr[i]);
-		pthread_create(&tid[i], &attr[i], ThFindProd,indices[i]);
+		pid[i]= fork();
+		if(pid[i]<0)
+		{
+			fprintf(stderr, "Fork Failed\n");
+			exit(1);
+		}
+		else if (pid[i]==0) {
+			ThFindProd(indices[i]);
+			exit(0);
+		}
 	}
-	for(i = 0;i<gThreadCount;i++){
-		pthread_join(tid[i], NULL);
+	for(int i = 0;i<gThreadCount;i++){
+		int status;
+		waitpid(pid[i], &status, 0);
+		if(status == 0){
+		}else{
+			printf("process failed\n");
+			exit(1);
+		}
 	}
+
 
 
 	prod = ComputeTotalProduct();
@@ -113,17 +141,25 @@ int main(int argc, char *argv[]){
 	// The thread start function is ThFindProd
 	// Don't forget to properly initialize shared variables
 
-
 	for(i = 0;i<gThreadCount;i++){
-		pthread_attr_init(&attr[i]);
-		pthread_create(&tid[i], &attr[i], ThFindProd,indices[i]);
+		pid[i]= fork();
+		if(pid[i]<0)
+		{
+			fprintf(stderr, "Fork Failed\n");
+			exit(1);
+		}
+		else if (pid[i]==0) {//end on child
+			ThFindProd(indices[i]);
+			exit(0);
+		}
 	}
 	bool done = false;
 	while(!done){
 		done = true;
-		for(int i = 0; i<gThreadCount;i++){
-			if(gThreadDone[i]==false)
-				done=false;
+		for(int i =0;i<gThreadCount;i++){
+			if(block->gThreadDone[i]==false){
+				done = false;
+			}
 		}
 	}
 
@@ -134,8 +170,8 @@ int main(int argc, char *argv[]){
 
 	InitSharedVars();
 	// Initialize your semaphores here
-	sem_init(&mutex, 0, 1);
-	sem_init(&completed, 0, 0);
+	sem_init(&(block->mutex), 1, 1);
+	sem_init(&(block->completed), 1, 0);
 
 
 	SetTime();
@@ -144,18 +180,45 @@ int main(int argc, char *argv[]){
 	// Initialize threads, create threads, and then make the parent wait on the "completed" semaphore
 	// The thread start function is ThFindProdWithSemaphore
 	// Don't forget to properly initialize shared variables and semaphores using sem_init
-	for(i = 0;i<gThreadCount;i++){
-		pthread_attr_init(&attr[i]);
-		pthread_create(&tid[i], &attr[i], ThFindProdWithSemaphore,indices[i]);
-	}
-	sem_wait(&completed);
 
+	for(i = 0;i<gThreadCount;i++){
+		pid[i]= fork();
+		if(pid[i]<0)
+		{
+			fprintf(stderr, "Fork Failed\n");
+			exit(1);
+		}
+		else if (pid[i]==0) {
+			ThFindProdWithSemaphore(indices[i]);
+			exit(0);
+		}
+	}
+
+	sem_wait(&(block->completed));
+	for(int i = 0;i<gThreadCount;i++){
+		kill(SIGTERM,pid[i]);
+	}
 	prod = ComputeTotalProduct();
 	printf("Threaded multiplication with parent waiting on a semaphore completed in %ld ms. Min = %d\n", GetTime(), prod);
-	sem_destroy(&mutex);
-	sem_destroy(&completed);
+	sem_destroy(&(block->mutex));
+	sem_destroy(&(block->completed));
 }
 
+int InitShm(){
+
+	int fd = shm_open("OS_HW2EC_19",O_CREAT | O_RDWR,S_IRUSR | S_IWUSR);
+	if(fd==-1){
+		printf("error creating shared memory shm_open\n");
+	}
+	if(ftruncate(fd, sizeof(struct sharedBlock))==-1){
+		printf("error creating shared memory ftruncate\n");
+	}
+	block = mmap(NULL,sizeof(struct sharedBlock),PROT_READ | PROT_WRITE,MAP_SHARED,fd,0);
+
+
+
+	return 0;
+}
 // Write a regular sequential function to multiply all the elements in gData mod NUM_LIMIT
 // REMEMBER TO MOD BY NUM_LIMIT AFTER EACH MULTIPLICATION TO PREVENT YOUR PRODUCT VARIABLE FROM OVERFLOWING
 int SqFindProd(int size) {
@@ -180,8 +243,8 @@ void* ThFindProd(void *param) {
 		prod *= gData[i];
 		prod = prod % NUM_LIMIT;
 	}
-	gThreadProd[threadNum]=prod;
-	gThreadDone[threadNum]=true;
+	block->gThreadProd[threadNum]=prod;
+	block->gThreadDone[threadNum]=true;
 }
 
 // Write a thread function that computes the product of all the elements in one division of the array mod NUM_LIMIT
@@ -203,17 +266,17 @@ void* ThFindProdWithSemaphore(void *param) {
 		prod = prod % NUM_LIMIT;
 	}
 	if(prod==0){//done if zero
-		sem_post(&completed);
+		sem_post(&(block->completed));
 	}
-	gThreadProd[threadNum]=prod;
+	block->gThreadProd[threadNum]=prod;
 
-	sem_wait(&mutex);//mutex protection
-	gDoneThreadCount++;
+	sem_wait(&(block->mutex));//mutex protection
+	block->gDoneThreadCount++;
 
-	if(gDoneThreadCount==gThreadCount){//done if last thread
-		sem_post(&completed);
+	if(block->gDoneThreadCount==gThreadCount){//done if last thread
+		sem_post(&(block->completed));
 	}
-	sem_post(&mutex);
+	sem_post(&(block->mutex));
 
 }
 
@@ -222,7 +285,7 @@ int ComputeTotalProduct() {
 
 	for(i=0; i<gThreadCount; i++)
 	{
-		prod *= gThreadProd[i];
+		prod *= block->gThreadProd[i];
 		prod %= NUM_LIMIT;
 	}
 
@@ -233,10 +296,10 @@ void InitSharedVars() {
 	int i;
 
 	for(i=0; i<gThreadCount; i++){
-		gThreadDone[i] = false;
-		gThreadProd[i] = 1;
+		block->gThreadDone[i] = false;
+		block->gThreadProd[i] = 1;
 	}
-	gDoneThreadCount = 0;
+	block->gDoneThreadCount = 0;
 }
 
 // Write a function that fills the gData array with random numbers between 1 and MAX_RANDOM_NUMBER
