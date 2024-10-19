@@ -3,7 +3,7 @@ CS 420
 Assignment 2: Multithreading and Synchronization
 Group 19 <- just your group number in this line
 Section 2 <- just your section number
-OSs Tested on: Kali Linux - AMD64
+OSs Tested on: Kali Linux, Arch Linux - AMD64
 */
 
 #include <signal.h>
