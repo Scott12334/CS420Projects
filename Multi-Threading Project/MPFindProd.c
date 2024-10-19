@@ -4,6 +4,47 @@ Assignment 2: Multithreading and Synchronization
 Group 19 <- just your group number in this line
 Section 2 <- just your section number
 OSs Tested on: Kali Linux, Arch Linux - AMD64
+cpu specs Arch
+Architecture:             x86_64
+  CPU op-mode(s):         32-bit, 64-bit
+  Address sizes:          43 bits physical, 48 bits virtual
+  Byte Order:             Little Endian
+CPU(s):                   16
+  On-line CPU(s) list:    0-15
+Vendor ID:                AuthenticAMD
+  Model name:             AMD Ryzen 7 2700X Eight-Core Processor
+    CPU family:           23
+    Model:                8
+    Thread(s) per core:   2
+    Core(s) per socket:   8
+    Socket(s):            1
+    Stepping:             2
+    Frequency boost:      enabled
+    CPU(s) scaling MHz:   59%
+    CPU max MHz:          3700.0000
+    CPU min MHz:          2200.0000
+    BogoMIPS:             7403.73
+    Flags:                fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflu
+                          sh mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant
+                          _tsc rep_good nopl nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqd
+                          q monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand
+                           lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetc
+                          h osvw skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwait
+                          x cpb hw_pstate ssbd ibpb vmmcall fsgsbase bmi1 avx2 smep bmi2 rdseed adx sma
+                          p clflushopt sha_ni xsaveopt xsavec xgetbv1 clzero irperf xsaveerptr arat npt
+                           lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pause
+                          filter pfthreshold avic v_vmsave_vmload vgif overflow_recov succor smca sev s
+                          ev_es
+Virtualization features:
+  Virtualization:         AMD-V
+Caches (sum of all):
+  L1d:                    256 KiB (8 instances)
+  L1i:                    512 KiB (8 instances)
+  L2:                     4 MiB (8 instances)
+  L3:                     16 MiB (2 instances)
+NUMA:
+  NUMA node(s):           1
+  NUMA node0 CPU(s):      0-15
 */
 
 #include <signal.h>
@@ -81,7 +122,7 @@ int main(int argc, char *argv[]){
 		exit(-1);
 	}
 	InitShm();
-	indexForZero=-1;
+	//indexForZero=-1;
 	GenerateInput(arraySize, indexForZero);
 	CalculateIndices(arraySize, gThreadCount, indices);
 	/* 
