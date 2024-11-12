@@ -2,10 +2,21 @@
 #include<stdio.h>
 #include<stdlib.h>
 
-void RR(){}
-void SJF(){}
-void PR_noPREMP(){}
-void PR_withPREMP(){}
+void RR();
+void SJF();
+void PR_noPREMP();
+void PR_withPREMP();
+typedef struct{
+	int number;
+	int arrivalTime;
+	int cpuBurst;
+	int priority;
+}Job;
+typedef struct Link{
+	Job * value;
+	struct Link * next;
+	struct Link * prev;
+}Link;
 int main(int argc, char * argv[]){
 	FILE * inputFile = fopen("input.txt", "r");
 	if(inputFile == NULL){
@@ -27,6 +38,17 @@ int main(int argc, char * argv[]){
 		printf("PR_withPREMP");
 	}
 	return 0;
+}
+void enqueue(Link ** end, Job * newJob){
+	Link * newLink = (Link *)malloc(sizeof(Link));
+	newLink->value = newJob;
+	*end->prev->next = newLink;
+	*end->prev = newLink;
+}
+Job * dequeue(Link ** head){
+	Job * nextOut = *head->value;
+	*head->next = *head->next->next;
+	return nextOut;
 }
 void RR(){}
 void SJF(){}
