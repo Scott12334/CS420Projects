@@ -13,15 +13,16 @@ typedef struct Link{
 	struct Link * next;
 	struct Link * prev;
 }Link;
-void readInQueue(Link ** head, FILE * inputFile);
-void RR();
+void readInQueue(Link ** end, FILE * inputFile);
+void RR(Link ** head, Link ** end,int timeQuantum, FILE * outputFile);
 void SJF();
 void PR_noPREMP();
 void PR_withPREMP();
 int main(int argc, char * argv[]){
 	FILE * inputFile = fopen("input.txt", "r");
-	if(inputFile == NULL){
-		printf("Error opening input file");
+	FILE * outputFile = fopen("output.txt", "w");
+	if(inputFile == NULL || outputFile == NULL){
+		printf("Error opening input/output file");
 	}
 	//13 is the max size of the schedule type +1 for terminating 0
 	char * scheduleType = (char *)calloc(sizeof(char),13); 
@@ -31,12 +32,12 @@ int main(int argc, char * argv[]){
 	head->next = end;
 	end->prev = head;
 	if(strncmp("RR",scheduleType,2) == 0){
+		fwrite(scheduleType,sizeof(char),strlen(scheduleType),outputFile);
 		char * numberString = strtok(scheduleType," ");
 		numberString = strtok(NULL, " ");
 		int number = atoi(numberString);
-		printf("RR %d\n",number);
 		readInQueue(&end, inputFile);
-		RR(&head,&end,number);
+		RR(&head,&end,number,outputFile);
 	}else if(strncmp("SJF",scheduleType,3) == 0){
 		printf("SJF");
 	}else if(strncmp("PR_noPREMP",scheduleType,10) == 0){
@@ -77,17 +78,18 @@ void readInQueue(Link ** end, FILE * inputFile){
 		//printf("%d %d %d %d\n", newJob->number, newJob->arrivalTime, newJob->cpuBurst, newJob->priority);
 	}
 }
-void RR(Link ** head, Link ** end,int timeQuantum){
+void RR(Link ** head, Link ** end,int timeQuantum, FILE * outputFile){
 	int time = 0;
+	char * result = (char *)calloc(sizeof(char),100);
 	while((*head)->next != *(end)){
-		printf("%d %d\n",time,(*head)->next->value->number);
+		sprintf(result,"%d %d\n",time,(*head)->next->value->number);
+		fwrite(result,sizeof(char),strlen(result),outputFile);
 		//Pop off first queue object
 		Job * nextJob = dequeue(head);
 		if(nextJob->cpuBurst < timeQuantum){time += nextJob->cpuBurst;}
 		else{time += timeQuantum;}
 		//Subtract time quantum from CPU burst
 		nextJob->cpuBurst -= timeQuantum;
-		printf("%d\n",nextJob->cpuBurst);
 		//If CPU burst is > 0, add back to queue
 		if(nextJob->cpuBurst > 0){enqueue(end,nextJob);}
 	}
