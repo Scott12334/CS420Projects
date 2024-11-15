@@ -104,8 +104,9 @@ void SJF(Link ** head, Link ** end, int jobCount, FILE * outputFile){
 	//Create sorted linked list of processes
 	Link * sortedHead = sortedProcesses(head, jobCount);
 	sortedHead = sortedHead->next;
-	while(sortedHead->next != NULL){
-		printf("%d", sortedHead->value->cpuBurst);
+	int count = 0;
+	while(sortedHead != NULL){
+		printf("%d\n", sortedHead->value->cpuBurst);
 		sortedHead = sortedHead->next;
 	}
 	//Move through array, if the process has arrived by the time, run it, if not move to next shortest, add to time
@@ -117,26 +118,33 @@ Link * sortedProcesses(Link ** queueHead, int numProcesses){
 	Link * sortedHead = (Link *)malloc(sizeof(Link));
 	Link * storedHead = sortedHead;
 	sortedHead->next = dequeue(queueHead);
+	sortedHead->next->next = NULL;
 	sortedHead->next->prev = sortedHead;
 	for(int i = 1; i < numProcesses; i++){
 		Link * nextLink = dequeue(queueHead);
+		Link * lastLink;
 		sortedHead = storedHead->next;
+		int added = 0;
 		//Loop through the new list until you either reach the end or find a spot where the cpu burst is less then the next one
-		while(sortedHead->next != NULL){
+		while(sortedHead != NULL){
 			if(nextLink->value->cpuBurst < sortedHead->value->cpuBurst){
 				sortedHead->prev->next = nextLink;
 				nextLink->prev = sortedHead->prev;
 				sortedHead->prev = nextLink;
 				nextLink->next = sortedHead;
+				added = 1;
 				break;
 			}
+			lastLink = sortedHead;
 			sortedHead = sortedHead->next;
-			if(sortedHead->next == NULL){
-				sortedHead->next = nextLink;
-				nextLink->prev = sortedHead;
-				break;
-			}
 		}
+		if(added == 0){
+			lastLink->next = nextLink;
+			nextLink->prev = lastLink;
+			nextLink->next = NULL;
+		}
+		sortedHead = storedHead->next;
 	}
+	sortedHead = storedHead;
 	return sortedHead;
 }
