@@ -6,6 +6,7 @@ typedef struct{
 	int number;
 	int arrivalTime;
 	int cpuBurst;
+	int remainingBurst;
 	int priority;
 }Job;
 typedef struct Link{
@@ -14,7 +15,7 @@ typedef struct Link{
 	struct Link * prev;
 }Link;
 void readInQueue(Link ** end, FILE * inputFile);
-void RR(Link ** head, Link ** end,int timeQuantum, FILE * outputFile);
+void RR(Link ** head, Link ** end,int timeQuantum, int jobCount,FILE * outputFile);
 void SJF(Link ** head, Link ** end, int jobCount, FILE * outputFile);
 Link * sortedProcesses(Link ** queueHead, int numProcesses);
 void PR_noPREMP();
@@ -42,7 +43,7 @@ int main(int argc, char * argv[]){
 		numberString = strtok(NULL, " ");
 		int number = atoi(numberString);
 		readInQueue(&end, inputFile);
-		RR(&head,&end,number,outputFile);
+		RR(&head,&end,number,numProcess,outputFile);
 	}else if(strncmp("SJF",scheduleType,3) == 0){
 		fwrite(scheduleType,sizeof(char),strlen(scheduleType),outputFile);
 		readInQueue(&end, inputFile);
@@ -78,39 +79,73 @@ void readInQueue(Link ** end, FILE * inputFile){
 		newJob->number = atoi(strtok(currentLine," "));
 		newJob->arrivalTime = atoi(strtok(NULL," "));
 		newJob->cpuBurst = atoi(strtok(NULL," "));
+		newJob->remainingBurst = newJob->cpuBurst;
 		newJob->priority= atoi(strtok(NULL," "));
 		enqueue(end,newJob);
 		//printf("%d %d %d %d\n", newJob->number, newJob->arrivalTime, newJob->cpuBurst, newJob->priority);
 	}
 }
-void RR(Link ** head, Link ** end,int timeQuantum, FILE * outputFile){
+void RR(Link ** head, Link ** end,int timeQuantum, int jobCount,FILE * outputFile){
 	int time = 0;
 	char * result = (char *)calloc(sizeof(char),100);
+	double totalWaitTime = 0;
 	while((*head)->next != *(end)){
 		sprintf(result,"%d %d\n",time,(*head)->next->value->number);
 		fwrite(result,sizeof(char),strlen(result),outputFile);
 		//Pop off first queue object
 		Job * nextJob = (dequeue(head))->value;
-		if(nextJob->cpuBurst < timeQuantum){time += nextJob->cpuBurst;}
+		if(nextJob->remainingBurst<= timeQuantum){
+			//This is the time the job is finished
+			time += nextJob->remainingBurst;
+			totalWaitTime += time - nextJob->cpuBurst;
+		}
 		else{time += timeQuantum;}
 		//Subtract time quantum from CPU burst
-		nextJob->cpuBurst -= timeQuantum;
+		nextJob->remainingBurst-= timeQuantum;
 		//If CPU burst is > 0, add back to queue
-		if(nextJob->cpuBurst > 0){enqueue(end,nextJob);}
+		if(nextJob->remainingBurst > 0){enqueue(end,nextJob);}
 	}
+	sprintf(result,"AVG Waiting Time: %f",totalWaitTime/jobCount);
+	fwrite(result,sizeof(char),strlen(result),outputFile);
 }
 void SJF(Link ** head, Link ** end, int jobCount, FILE * outputFile){
 	int time = 0;
+	double totalWaitTime = 0;
+	char * result = (char *)calloc(sizeof(char),100);
 	//Create sorted linked list of processes
 	Link * sortedHead = sortedProcesses(head, jobCount);
+	Link * storedHead = sortedHead;
 	sortedHead = sortedHead->next;
-	int count = 0;
-	while(sortedHead != NULL){
-		printf("%d\n", sortedHead->value->cpuBurst);
-		sortedHead = sortedHead->next;
-	}
 	//Move through array, if the process has arrived by the time, run it, if not move to next shortest, add to time
-	//If reach end and nothing has run, add one to time 
+	int jobsDone = 0;
+	while(jobsDone < jobCount){
+		int increaseTime = 0;
+		sortedHead = storedHead->next;
+		while(sortedHead != NULL){
+			if(sortedHead->value->arrivalTime <= time){
+				//Next job to run
+				sprintf(result,"%d %d\n",time,sortedHead->value->number);
+				fwrite(result,sizeof(char),strlen(result),outputFile);
+				time += sortedHead->value->cpuBurst;
+				totalWaitTime += time - sortedHead->value->cpuBurst - sortedHead->value->arrivalTime; 
+				//Remove job, not at end
+				if(sortedHead->next != NULL){
+					sortedHead->prev->next = sortedHead->next;
+					sortedHead->next->prev = sortedHead->prev;
+				}else{
+					sortedHead->prev->next = NULL;
+				}
+				jobsDone ++;
+				increaseTime = 1;
+				break;
+			}
+			sortedHead = sortedHead->next;
+		}
+		//If reach end and nothing has run, add one to time 
+		if(increaseTime == 0){time++;}
+	}
+	sprintf(result,"AVG Waiting Time: %f",totalWaitTime/jobCount);
+	fwrite(result,sizeof(char),strlen(result),outputFile);
 }
 void PR_noPREMP(){}
 void PR_withPREMP(){}
