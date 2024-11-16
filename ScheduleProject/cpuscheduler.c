@@ -30,6 +30,7 @@ int main(int argc, char * argv[]){
 	}
 	//13 is the max size of the schedule type +1 for terminating 0
 	int numProcess = 0;
+	int timeQuantum=0;
 	char * scheduleType = (char *)calloc(sizeof(char),13);
 	fscanf(inputFile, "%s",scheduleType);
 	fscanf(inputFile, "%d",&numProcess);
@@ -44,12 +45,12 @@ int main(int argc, char * argv[]){
 	end->prev = head;
 	if(strncmp("RR",scheduleType,2) == 0){
 		//fwrite(scheduleType,sizeof(char),strlen(scheduleType),outputFile);
-		fprintf(outputFile,"%s\n", scheduleType);
-		char * numberString = strtok(scheduleType," ");
-		numberString = strtok(NULL, " ");
-		int number = atoi(numberString);
+		timeQuantum = numProcess;
+		fscanf(inputFile,"%d", &numProcess);
+		printf("%s\n",scheduleType);
+		fprintf(outputFile,"%s %d\n", scheduleType,timeQuantum);
 		readInQueue(&end, inputFile);
-		RR(&head,&end,number,numProcess,outputFile);
+		RR(&head,&end,timeQuantum,numProcess,outputFile);
 	}else if(strncmp("SJF",scheduleType,3) == 0){
 		//fwrite(scheduleType,sizeof(char),strlen(scheduleType),outputFile);
 		fprintf(outputFile,"%s\n", scheduleType);
@@ -251,7 +252,6 @@ void PR_withPREMP(Link ** head, Link ** end, int jobCount, FILE * outputFile){
 		time++;
 		if(currentJob->value->remainingBurst==0){
 			jobsDone++;
-			printf("%d\n",currentJob->value->number);
 			totalWaitTime += time - currentJob->value->cpuBurst - currentJob->value->arrivalTime;
 			if(currentJob->next != NULL){
 				currentJob->prev->next = currentJob->next;
