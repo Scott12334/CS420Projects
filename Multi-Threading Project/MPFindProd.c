@@ -350,6 +350,7 @@ void GenerateInput(int size, int indexForZero) {
 		gData[i] = GetRand(1, MAX_RANDOM_NUMBER);
 	}
 	if(indexForZero >= 0 && indexForZero < size){
+		printf("zero here\n");
 		gData[indexForZero] = 0;
 	}
 }

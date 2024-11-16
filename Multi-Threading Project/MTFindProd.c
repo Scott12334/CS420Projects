@@ -109,6 +109,7 @@ int main(int argc, char *argv[]){
 		exit(-1);
 	}
 
+	indexForZero=-1;
 	GenerateInput(arraySize, indexForZero);
 
 	CalculateIndices(arraySize, gThreadCount, indices);
@@ -118,6 +119,7 @@ int main(int argc, char *argv[]){
 		printf("Division %d: Start %d, End %d\n",indices[i][0],indices[i][1],indices[i][2]);
 	}
 	*/
+
 
 	// Code for the sequential part
 	SetTime();
@@ -217,7 +219,7 @@ void* ThFindProd(void *param) {
 	int endIndex = ((int*)param)[2];
 	int prod=1;
 
-	for(int i = startIndex;i<endIndex;i++){
+	for(int i = startIndex;i<=endIndex;i++){
 		prod *= gData[i];
 		prod = prod % NUM_LIMIT;
 	}
@@ -239,7 +241,7 @@ void* ThFindProdWithSemaphore(void *param) {
 	int *arr = (int*)param;
 	int prod=1;
 
-	for(int i = startIndex;i<endIndex;i++){
+	for(int i = startIndex;i<=endIndex;i++){
 		prod *= gData[i];
 		prod = prod % NUM_LIMIT;
 	}

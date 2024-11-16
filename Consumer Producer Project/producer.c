@@ -3,7 +3,7 @@ CS 420
 Assignment 1: Shared Memory and Multi-Tasking
 Group 19 <- just your group number in this line
 Section 2 <- just your section number
-OSs Tested on: Kali Linux
+OSs Tested on: Kali Linux, Arch Linux
 */
 
 /*
@@ -122,10 +122,10 @@ void InitShm(int bufSize, int itemCnt)
 
     // Write code here to create a shared memory block and map it to gShmPtr
     // Use the above name.
-	int fd = shm_open(name,O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-	if(fd == -1){
-		printf("Error creating shared memory");
-		exit(1);
+    int fd = shm_open(name, 0100 | O_RDWR, S_IRUSR | S_IWUSR);
+    if (fd == -1) {
+        printf("Error creating shared memory");
+        exit(1);
 	}
 	if (ftruncate(fd, SHM_SIZE) == -1){
 		printf("Error creating shared memory");
