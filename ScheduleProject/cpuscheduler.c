@@ -18,10 +18,12 @@ void readInQueue(Link ** end, FILE * inputFile);
 void RR(Link ** head, Link ** end,int timeQuantum, int jobCount,FILE * outputFile);
 void SJF(Link ** head, Link ** end, int jobCount, FILE * outputFile);
 Link * sortedProcesses(Link ** queueHead, int numProcesses);
-void PR_noPREMP();
-void PR_withPREMP();
+void PR_noPREMP(Link ** head, Link ** end, int jobCount, FILE * outputFile);
+void PR_withPREMP(Link ** head, Link ** end, int jobCount, FILE * outputFile);
+Link * sortedProcessesPriority(Link ** queueHead, int numProcesses);
 int main(int argc, char * argv[]){
-	FILE * inputFile = fopen("input.txt", "r");
+
+	FILE * inputFile = fopen("input.txt", "r");//create file pointers
 	FILE * outputFile = fopen("output.txt", "w");
 	if(inputFile == NULL || outputFile == NULL){
 		printf("Error opening input/output file");
@@ -50,8 +52,14 @@ int main(int argc, char * argv[]){
 		SJF(&head, &end, numProcess,outputFile);
 		printf("SJF");
 	}else if(strncmp("PR_noPREMP",scheduleType,10) == 0){
+		fwrite(scheduleType,sizeof(char),strlen(scheduleType),outputFile);
+		readInQueue(&end, inputFile);
+		PR_noPREMP(&head, &end, numProcess,outputFile);
 		printf("PR_noPREMP");
 	}else if(strncmp("PR_withPREMP",scheduleType,12) == 0){
+		fwrite(scheduleType,sizeof(char),strlen(scheduleType),outputFile);
+		readInQueue(&end, inputFile);
+		PR_withPREMP(&head, &end, numProcess,outputFile);
 		printf("PR_withPREMP");
 	}
 	return 0;
@@ -147,8 +155,81 @@ void SJF(Link ** head, Link ** end, int jobCount, FILE * outputFile){
 	sprintf(result,"AVG Waiting Time: %f",totalWaitTime/jobCount);
 	fwrite(result,sizeof(char),strlen(result),outputFile);
 }
-void PR_noPREMP(){}
-void PR_withPREMP(){}
+/*
+** Reused SJF code to sort by priority instead
+ */
+void PR_noPREMP(Link ** head, Link ** end, int jobCount, FILE * outputFile){
+	int time = 0;
+	double totalWaitTime = 0;
+	char * result = (char *)calloc(sizeof(char),100);
+	int jobsDone = 0;
+	Link * jobQueue = sortedProcessesPriority(head, jobCount);
+	while(jobsDone < jobCount){
+		int increaseTime = 0;
+		jobQueue = jobQueue->next;
+		while(jobQueue != NULL){
+			if(jobQueue->value->arrivalTime <= time){
+				//Next job to run
+				sprintf(result,"%d %d\n",time,jobQueue->value->number);
+				fwrite(result,sizeof(char),strlen(result),outputFile);
+				time += jobQueue->value->cpuBurst;
+				totalWaitTime += time - jobQueue->value->cpuBurst - jobQueue->value->arrivalTime;
+				//Remove job, not at end
+				if(jobQueue->next != NULL){
+					jobQueue->prev->next = jobQueue->next;
+					jobQueue->next->prev = jobQueue->prev;
+				}else{
+					jobQueue->prev->next = NULL;
+				}
+				jobsDone ++;
+				increaseTime = 1;
+				break;
+			}
+			jobQueue = jobQueue->next;
+		}
+		//If reach end and nothing has run, add one to time
+		if(increaseTime == 0){time++;}
+	}
+	sprintf(result,"AVG Waiting Time: %f",totalWaitTime/jobCount);
+	fwrite(result,sizeof(char),strlen(result),outputFile);
+}
+void PR_withPREMP(Link ** head, Link ** end, int jobCount, FILE * outputFile){
+	int time = 0;
+	double totalWaitTime = 0;
+	char * result = (char *)calloc(sizeof(char),100);
+	int jobsDone = 0;
+	Link * jobQueue = sortedProcessesPriority(head, jobCount);
+	Link * currentJob = jobQueue;
+	while(jobsDone < jobCount){
+		Link * copyQueue = jobQueue;
+		while(copyQueue != NULL){
+			if(copyQueue->value->arrivalTime<=time && jobQueue->value->priority<currentJob->value->priority)
+				sprintf(result,"%d %d\n",time,currentJob->value->number);
+				fwrite(result,sizeof(char),strlen(result),outputFile);
+				currentJob = copyQueue;
+			copyQueue= copyQueue->next;
+		}
+
+		currentJob->value->remainingBurst--;
+		time++;
+		if(currentJob->value->remainingBurst==0){
+			jobsDone++;
+			totalWaitTime += time - currentJob->value->cpuBurst - currentJob->value->arrivalTime;
+			if(currentJob->next == NULL){
+				currentJob->prev->next = currentJob->next;
+				currentJob->next->prev = currentJob->prev;
+			}
+			else{
+				currentJob->prev->next = NULL;
+			}
+		}
+	}
+				sprintf(result,"%d %d\n",time,currentJob->value->number);
+				fwrite(result,sizeof(char),strlen(result),outputFile);
+	sprintf(result,"AVG Waiting Time: %f",totalWaitTime/jobCount);
+	fwrite(result,sizeof(char),strlen(result),outputFile);
+
+}
 Link * sortedProcesses(Link ** queueHead, int numProcesses){
 	Link * sortedHead = (Link *)malloc(sizeof(Link));
 	Link * storedHead = sortedHead;
@@ -163,6 +244,41 @@ Link * sortedProcesses(Link ** queueHead, int numProcesses){
 		//Loop through the new list until you either reach the end or find a spot where the cpu burst is less then the next one
 		while(sortedHead != NULL){
 			if(nextLink->value->cpuBurst < sortedHead->value->cpuBurst){
+				sortedHead->prev->next = nextLink;
+				nextLink->prev = sortedHead->prev;
+				sortedHead->prev = nextLink;
+				nextLink->next = sortedHead;
+				added = 1;
+				break;
+			}
+			lastLink = sortedHead;
+			sortedHead = sortedHead->next;
+		}
+		if(added == 0){
+			lastLink->next = nextLink;
+			nextLink->prev = lastLink;
+			nextLink->next = NULL;
+		}
+		sortedHead = storedHead->next;
+	}
+	sortedHead = storedHead;
+	return sortedHead;
+}
+
+Link * sortedProcessesPriority(Link ** queueHead, int numProcesses){
+	Link * sortedHead = (Link *)malloc(sizeof(Link));
+	Link * storedHead = sortedHead;
+	sortedHead->next = dequeue(queueHead);
+	sortedHead->next->next = NULL;
+	sortedHead->next->prev = sortedHead;
+	for(int i = 1; i < numProcesses; i++){
+		Link * nextLink = dequeue(queueHead);
+		Link * lastLink;
+		sortedHead = storedHead->next;
+		int added = 0;
+		//Loop through the new list until you either reach the end or find a spot where the cpu burst is less then the next one
+		while(sortedHead != NULL){
+			if(nextLink->value->priority < sortedHead->value->priority){
 				sortedHead->prev->next = nextLink;
 				nextLink->prev = sortedHead->prev;
 				sortedHead->prev = nextLink;
