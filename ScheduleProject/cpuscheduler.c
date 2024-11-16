@@ -2,6 +2,13 @@
 #include<stdio.h>
 #include<stdlib.h>
 
+/*
+CS 420
+Assignment 3: CPU Scheduling
+Group 19 <- just your group number in this line
+Section 2 <- just your section number
+OSs Tested on: Kali Linux , Arch Linux
+*/
 typedef struct{
 	int number;
 	int arrivalTime;
