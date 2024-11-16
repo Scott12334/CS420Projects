@@ -29,35 +29,42 @@ int main(int argc, char * argv[]){
 		printf("Error opening input/output file");
 	}
 	//13 is the max size of the schedule type +1 for terminating 0
-	char * scheduleType = (char *)calloc(sizeof(char),13); 
-	fgets(scheduleType,13,inputFile);
-	char * processCount = (char *)calloc(sizeof(char),5); 
-	fgets(processCount,5,inputFile);
-	int numProcess = atoi(processCount);
+	int numProcess = 0;
+	char * scheduleType = (char *)calloc(sizeof(char),13);
+	fscanf(inputFile, "%s",scheduleType);
+	fscanf(inputFile, "%d",&numProcess);
+	//fgets(scheduleType,13,inputFile);
+	//char * processCount = (char *)calloc(sizeof(char),5);
+	//fgets(processCount,5,inputFile);
+	//int numProcess = atoi(processCount);
 
 	Link * head = (Link *)malloc(sizeof(Link));
 	Link * end = (Link *)malloc(sizeof(Link));
 	head->next = end;
 	end->prev = head;
 	if(strncmp("RR",scheduleType,2) == 0){
-		fwrite(scheduleType,sizeof(char),strlen(scheduleType),outputFile);
+		//fwrite(scheduleType,sizeof(char),strlen(scheduleType),outputFile);
+		fprintf(outputFile,"%s\n", scheduleType);
 		char * numberString = strtok(scheduleType," ");
 		numberString = strtok(NULL, " ");
 		int number = atoi(numberString);
 		readInQueue(&end, inputFile);
 		RR(&head,&end,number,numProcess,outputFile);
 	}else if(strncmp("SJF",scheduleType,3) == 0){
-		fwrite(scheduleType,sizeof(char),strlen(scheduleType),outputFile);
+		//fwrite(scheduleType,sizeof(char),strlen(scheduleType),outputFile);
+		fprintf(outputFile,"%s\n", scheduleType);
 		readInQueue(&end, inputFile);
 		SJF(&head, &end, numProcess,outputFile);
 		printf("SJF");
 	}else if(strncmp("PR_noPREMP",scheduleType,10) == 0){
-		fwrite(scheduleType,sizeof(char),strlen(scheduleType),outputFile);
+		//fwrite(scheduleType,sizeof(char),strlen(scheduleType),outputFile);
+		fprintf(outputFile,"%s\n", scheduleType);
 		readInQueue(&end, inputFile);
 		PR_noPREMP(&head, &end, numProcess,outputFile);
 		printf("PR_noPREMP");
 	}else if(strncmp("PR_withPREMP",scheduleType,12) == 0){
-		fwrite(scheduleType,sizeof(char),strlen(scheduleType),outputFile);
+		//fwrite(scheduleType,sizeof(char),strlen(scheduleType),outputFile);
+		fprintf(outputFile,"%s\n", scheduleType);
 		readInQueue(&end, inputFile);
 		PR_withPREMP(&head, &end, numProcess,outputFile);
 		printf("PR_withPREMP");
@@ -68,6 +75,7 @@ void enqueue(Link ** end, Job * newJob){
 	Link * newLink = (Link *)malloc(sizeof(Link));
 	newLink->value = newJob;
 	(*end)->prev->next = newLink;
+	newLink->prev = (*end)->prev;
 	(*end)->prev = newLink;
 	newLink->next = (*end);
 }
@@ -80,8 +88,7 @@ Link * dequeue(Link ** head){
 	return nodeToRemove;
 }
 void readInQueue(Link ** end, FILE * inputFile){
-	char * currentLine = (char *)calloc(sizeof(char),15); 
-	while(fgets(currentLine,15,inputFile)){
+	/*while(fgets(currentLine,15,inputFile)){
 		printf("%s",currentLine);
 		Job * newJob = (Job *)malloc(sizeof(Job));
 		newJob->number = atoi(strtok(currentLine," "));
@@ -91,6 +98,20 @@ void readInQueue(Link ** end, FILE * inputFile){
 		newJob->priority= atoi(strtok(NULL," "));
 		enqueue(end,newJob);
 		//printf("%d %d %d %d\n", newJob->number, newJob->arrivalTime, newJob->cpuBurst, newJob->priority);
+	}*/
+	int Number=0;
+	int arrivalTime = 0;
+	int cpuBurst =0;
+	int priority =0;
+	while(fscanf(inputFile,"%d %d %d %d",&Number,&arrivalTime,&cpuBurst,&priority )==4){
+		printf("%d %d %d %d\n",Number,arrivalTime,cpuBurst,priority);
+		Job * newJob = (Job *)malloc(sizeof(Job));
+		newJob->number = Number;
+		newJob->arrivalTime = arrivalTime;
+		newJob->cpuBurst = cpuBurst;
+		newJob->remainingBurst = newJob->cpuBurst;
+		newJob->priority= priority;
+		enqueue(end,newJob);
 	}
 }
 void RR(Link ** head, Link ** end,int timeQuantum, int jobCount,FILE * outputFile){
@@ -198,34 +219,55 @@ void PR_withPREMP(Link ** head, Link ** end, int jobCount, FILE * outputFile){
 	double totalWaitTime = 0;
 	char * result = (char *)calloc(sizeof(char),100);
 	int jobsDone = 0;
-	Link * jobQueue = sortedProcessesPriority(head, jobCount);
-	Link * currentJob = jobQueue;
+	Link * jobQueue = *head;
+	Link * currentJob = jobQueue->next;
+	int hasGone = 0;
+	int endCase = 0;
 	while(jobsDone < jobCount){
-		Link * copyQueue = jobQueue;
-		while(copyQueue != NULL){
-			if(copyQueue->value->arrivalTime<=time && jobQueue->value->priority<currentJob->value->priority)
-				sprintf(result,"%d %d\n",time,currentJob->value->number);
-				fwrite(result,sizeof(char),strlen(result),outputFile);
-				currentJob = copyQueue;
+		Link * copyQueue = jobQueue->next;
+		Link * currentCopy = currentJob;
+		while(copyQueue->value != NULL){
+			if(copyQueue->value->arrivalTime<=time && copyQueue->value->priority<currentJob->value->priority)
+				currentCopy = copyQueue;
 			copyQueue= copyQueue->next;
 		}
 
+		if(currentCopy->value->number != currentJob->value->number){
+			currentJob = currentCopy;
+			hasGone=0;
+		}
+
+		if(hasGone==0){
+			hasGone=1;
+			sprintf(result,"%d %d\n",time,currentJob->value->number);
+			fwrite(result,sizeof(char),strlen(result),outputFile);
+		}
+		if(jobsDone == jobCount-1 && endCase == 0){
+			sprintf(result,"%d %d\n",time,currentJob->value->number);
+			fwrite(result,sizeof(char),strlen(result),outputFile);
+			endCase=1;
+		}
 		currentJob->value->remainingBurst--;
 		time++;
 		if(currentJob->value->remainingBurst==0){
 			jobsDone++;
+			printf("%d\n",currentJob->value->number);
 			totalWaitTime += time - currentJob->value->cpuBurst - currentJob->value->arrivalTime;
-			if(currentJob->next == NULL){
+			if(currentJob->next != NULL){
 				currentJob->prev->next = currentJob->next;
 				currentJob->next->prev = currentJob->prev;
 			}
 			else{
 				currentJob->prev->next = NULL;
 			}
+			if(currentJob->next->value != NULL){
+				currentJob = currentJob->next;
+			}else{
+				currentJob = currentJob->prev;
+			}
+
 		}
 	}
-				sprintf(result,"%d %d\n",time,currentJob->value->number);
-				fwrite(result,sizeof(char),strlen(result),outputFile);
 	sprintf(result,"AVG Waiting Time: %f",totalWaitTime/jobCount);
 	fwrite(result,sizeof(char),strlen(result),outputFile);
 
