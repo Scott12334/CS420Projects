@@ -5,9 +5,10 @@
 
 void fifo(int frames[], int requests[], int numRequests,int numFrames);
 void optimal(int frames[], int requests[], int numRequests, int numFrames);
-void lru(int frames[], int requests[], int numRequests);
+void lru(int frames[], int requests[], int numRequests, int numFrames);
 int isInFrame(int frames[], int pageRequest, int numFrames);
 int findFarthestUse(int frames[], int requests[],int numRequests, int currentRequest,int numFrames);
+int findMinIndex(int times[], int numTimes);
 int main(){
 	FILE * inputFile = fopen("input.txt","r");
 	FILE * outputFile = fopen("output.txt","w");
@@ -44,12 +45,18 @@ int main(){
 	}*/
 	printf("FIFO\n");
 	fifo(frames,requests,numRequests,numFrames);
+
 	for(int i = 0; i < numFrames; i++){
 		frames[i] = -1;
 	}
 	printf("\nOptimal\n");
 	optimal(frames,requests,numRequests,numFrames);
-	
+
+	for(int i = 0; i < numFrames; i++){
+		frames[i] = -1;
+	}
+	printf("\nLRU\n");
+	lru(frames,requests,numRequests,numFrames);
 
 	return 0;
 }
@@ -108,7 +115,45 @@ void optimal(int frames[], int requests[], int numRequests, int numFrames){
 	}
 	printf("%d page faults\n",pageFaults);
 }
-void lru(int frames[], int requests[], int numRequests){}
+void lru(int frames[], int requests[], int numRequests, int numFrames){
+	//Have a second int[], size of frames, that holds the time that each element was accessed
+	//Time will be dependent on an int counter, increments at the end of each loop
+	//Frame with the lowest time will be choosen
+	int timer = 1;
+	int times[numFrames];
+	int pageFaults = 0;
+	for(int i = 0; i < numFrames; i++){times[i] = 0;}
+	for(int i = 0; i < numRequests; i++){
+		int frameNumber = isInFrame(frames,requests[i],numFrames);
+		if(frameNumber != -1){
+			printf("Page %d already in Frame %d\n",requests[i],frameNumber);
+			times[frameNumber] = timer;
+		}else{
+			//Find min access time index
+			int lastAccessed = findMinIndex(times,numFrames);
+			if(frames[lastAccessed] == -1){
+				printf("Page %d loaded into Frame %d\n",requests[i],lastAccessed);
+			}else{
+				printf("Page %d unloaded from Frame %d, Page %d loaded into Frame %d\n",frames[lastAccessed],lastAccessed,requests[i],lastAccessed);
+			}
+			//Replace that index
+			frames[lastAccessed] = requests[i];
+			times[lastAccessed] = timer;
+			pageFaults ++;
+		}
+		timer ++;
+	}
+	printf("%d page faults\n",pageFaults);
+}
+int findMinIndex(int times[], int numTimes){
+	int minIndex = 0;
+	for(int i = 0; i < numTimes; i++){
+		if(times[i] < times[minIndex]){
+			minIndex = i;
+		}
+	}
+	return minIndex;
+}
 int isInFrame(int frames[], int pageRequest, int numFrames){
 	for(int i = 0; i < numFrames; i++){
 		if(frames[i] == pageRequest){
