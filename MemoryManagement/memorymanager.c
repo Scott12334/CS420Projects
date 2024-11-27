@@ -47,7 +47,7 @@ int main(){
 	for(int i = 0; i < numFrames; i++){
 		frames[i] = -1;
 	}
-	printf("Optimal\n");
+	printf("\nOptimal\n");
 	optimal(frames,requests,numRequests,numFrames);
 	
 
@@ -58,6 +58,7 @@ void fifo(int frames[], int requests[], int numRequests,int numFrames){
 	//Else print its already there
 	//First head starts at 0, if that one changes, move it forward one
 	int counter = 0;
+	int pageFaults = 0;
 	for(int i = 0; i < numRequests; i++){
 		int frameNumber = isInFrame(frames,requests[i],numFrames);
 		if(frameNumber != -1){
@@ -75,14 +76,17 @@ void fifo(int frames[], int requests[], int numRequests,int numFrames){
 				frames[currentFrame] = requests[i];
 			}
 			counter ++;
+			pageFaults ++;
 		}
 	}
+	printf("%d page faults\n",pageFaults);
 }
 void optimal(int frames[], int requests[], int numRequests, int numFrames){
 	//If frames isn't full, add it
 	//If it is find the page that is used farthest in the future and replace
 	bool isFull = false;
 	int counter = 0;
+	int pageFaults = 0;
 	for(int i = 0; i < numRequests; i++){
 		int frameNumber = isInFrame(frames,requests[i],numFrames);
 		if(frameNumber != -1){
@@ -99,8 +103,10 @@ void optimal(int frames[], int requests[], int numRequests, int numFrames){
 				printf("Page %d unloaded from Frame %d, Page %d loaded into Frame %d\n",frames[replaceIndex],replaceIndex,requests[i],replaceIndex);
 				frames[replaceIndex] = requests[i];
 			}
+			pageFaults ++;
 		}
 	}
+	printf("%d page faults\n",pageFaults);
 }
 void lru(int frames[], int requests[], int numRequests){}
 int isInFrame(int frames[], int pageRequest, int numFrames){
