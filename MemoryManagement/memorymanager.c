@@ -7,7 +7,7 @@ void fifo(int frames[], int requests[], int numRequests,int numFrames);
 void optimal(int frames[], int requests[], int numRequests, int numFrames);
 void lru(int frames[], int requests[], int numRequests);
 int isInFrame(int frames[], int pageRequest, int numFrames);
-int findFarthestUse(int frames[], int numFrames);
+int findFarthestUse(int frames[], int requests[],int numRequests, int currentRequest,int numFrames);
 int main(){
 	FILE * inputFile = fopen("input.txt","r");
 	FILE * outputFile = fopen("output.txt","w");
@@ -89,12 +89,13 @@ void optimal(int frames[], int requests[], int numRequests, int numFrames){
 			printf("Page %d already in Frame %d\n",requests[i],frameNumber);
 		}else{
 			if(isFull == false){
-				printf("Page %d unloaded from Frame %d, Page %d loaded into Frame %d\n",frames[counter],counter,requests[i],counter);
+				printf("Page %d loaded into Frame %d\n",requests[i],counter);
 				frames[counter] = requests[i];
 				counter ++;
 				if(counter >= numFrames){isFull = true;}
 			}else{
-				int replaceIndex = findFarthestUse(frames,numFrames);
+				//printf("Find a spot for %d\n",requests[i]);
+				int replaceIndex = findFarthestUse(frames,requests,numRequests,i,numFrames);
 				printf("Page %d unloaded from Frame %d, Page %d loaded into Frame %d\n",frames[replaceIndex],replaceIndex,requests[i],replaceIndex);
 				frames[replaceIndex] = requests[i];
 			}
@@ -110,19 +111,23 @@ int isInFrame(int frames[], int pageRequest, int numFrames){
 	}
 	return -1;
 }
-int findFarthestUse(int frames[], int numFrames){
+int findFarthestUse(int frames[], int requests[],int numRequests, int currentRequest,int numFrames){
 	int furthestIndex = 0;
 	int furthestNum = 0; 
-	for(int i = 0; i < numFrames - 1; i++){
+	//Loop through each frame
+	//Find how many steps away that frame value is in the requests
+	//Return the frame index of the farthest
+	for(int i = 0; i < numFrames; i++){
 		int stepsToNext = -1;
-		for(int j = i + 1; j < numFrames; j++){
+		for(int j = currentRequest + 1; j < numRequests; j++){
 			stepsToNext ++;
-			if(frames[i] == frames[j]){
+			if(frames[i] == requests[j]){
 				break;
 			}
-			//Hit the end, set ti infinity
-			if(j == numFrames - 1){stepsToNext = -1;}
+			//Hit the end, set to infinity
+			if(j == numRequests - 1){stepsToNext = -1;}
 		}
+		//printf("Page %d next use is %d away\n",frames[i],stepsToNext);
 		//Means it is infinty, smallest infinity is the one replaced
 		if(stepsToNext == -1){return i;}
 		//If i == 0, set that as min
